@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: tester
+  name: tester
+spec:
+  serviceAccountName: argocd-application-controller
+  containers:
+  - image: amazon/aws-cli
+    name: tester
+    command:
+    - bash
+    args:
+    - -c
+    - sleep 3600
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}

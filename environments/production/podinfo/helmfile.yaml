@@ -1,0 +1,28 @@
+repositories:
+- name: stable
+  url: https://kubernetes-charts.storage.googleapis.com
+- name: incubator
+  url: https://kubernetes-charts-incubator.storage.googleapis.com
+- name: flagger
+  url: https://flagger.app
+
+releases:
+- name: frontend
+  chart: flagger/podinfo
+  namespace: test
+  values:
+  - nameOverride: frontend
+    backend: http://backend.test:9898/echo
+    canary:
+      enabled: true
+      istioIngress:
+        enabled: true
+        gateway: public-gateway.istio-system.svc.cluster.local
+        host: frontend.istio.example.com
+- name: backend
+  chart: flagger/podinfo
+  namespace: test
+  values:
+  - nameOverride: backend
+    canary:
+      enabled: true

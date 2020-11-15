@@ -1,0 +1,90 @@
+values:
+- awsAccountID: {{ requiredEnv "AWS_ACCOUNT_ID" | quote }}
+  iamRoleName: argocd
+  argoEnv: production
+
+---
+
+repositories:
+- name: argo
+  url: https://argoproj.github.io/argo-helm
+- name: center
+  url: https://repo.chartcenter.io
+
+releases:
+- name: serviceaccount
+  chart: center/incubator/raw
+  values:
+  - resources:
+    - apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountID }}:role/{{ .Values.iamRoleName}}
+        name: argocd-application-controller
+        namespace: default
+- name: argocd
+  chart: argo/argo-cd
+  values:
+  - controller:
+      # Instead, use the manually created serviceaccount with the IAM role
+      serviceAccount:
+        create: false
+    server:
+      # See https://hub.docker.com/r/chatwork/argocd-helmfile
+      image:
+        repository: chatwork/argocd-helmfile
+        tag: latest
+      # See https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L521-L523
+      config:
+        # See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/argocd-cm.yaml#L214
+        configManagementPlugins: |
+          - name: helmfile
+            generate:
+              command: ["/bin/sh", "-c"]
+              args: ["helmfile --namespace $ARGOCD_APP_NAMESPACE template | sed -e '1,/---/d' | sed -e 's|apiregistration.k8s.io/v1beta1|apiregistration.k8s.io/v1|g'"]
+  needs:
+  - serviceaccount
+- name: appset
+  #chart: git::ssh://git@github.com/argoproj-labs/applicationset@manifests/namespace-install
+  chart: forks/applicationset/namespace-install
+  # Same as argocd
+  namespace: default
+  needs:
+  - argocd
+- name: apps
+  chart: center/incubator/raw
+  disableValidation: true
+  needs:
+  - default/appset
+  values:
+  - resources:
+    - apiVersion: argoproj.io/v1alpha1
+      kind: ApplicationSet
+      metadata:
+        name: podinfo
+      spec:
+        generators:
+        - clusters:
+            selector:
+              matchLabels:
+                argocd.argoproj.io/secret-type: cluster
+        template:
+          metadata:
+            name: '{{`{{name}}`}}-podinfo'
+            labels:
+              environment: '{{`{{metadata.labels.environment}}`}}'
+          spec:
+            # Project is a application project name.
+            # Empty name means that application belongs to 'default' project.
+            # Ref https://github.com/argoproj-labs/applicationset/blob/b72b26e8d1cdbc7993633abeb3a052a69b959b00/manifests/crds/argoproj.io_applicationsets.yaml#L216
+            project: ""
+            source:
+              repoURL: https://github.com/mumoshu/ephemeral-eks-demo.git
+              targetRevision: HEAD
+              path: environments/{{ .Values.argoEnv }}/podinfo
+              plugin:
+                name: helmfile
+            destination:
+              server: '{{`{{server}}`}}'
+              namespace: podinfo

@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/part-of: argocd-applicationset
+    app.kubernetes.io/component: controller
+  name: argocd-applicationset-controller
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-applicationset-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-applicationset-controller
+    spec:
+      containers:
+        - command:
+            - applicationset-controller
+          image: registry.cn-hangzhou.aliyuncs.com/appcenter/argocd-applicationset:v0.1.0
+          imagePullPolicy: Always
+          name: argocd-applicationset-controller
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+      serviceAccountName: argocd-applicationset-controller
