@@ -2,6 +2,7 @@ values:
 - awsAccountID: {{ requiredEnv "AWS_ACCOUNT_ID" | quote }}
   iamRoleName: argocd
   argoEnv: production
+  adminPassword: {{ requiredEnv "ADMIN_PASSOWRD" | quote }}
 
 ---
 
@@ -23,13 +24,31 @@ releases:
             eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountID }}:role/{{ .Values.iamRoleName}}
         name: argocd-application-controller
         namespace: default
+    - apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountID }}:role/{{ .Values.iamRoleName}}
+        # Ref https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L454
+        name: argocd-server
+        namespace: default
 - name: argocd
   chart: argo/argo-cd
   values:
-  - controller:
+  - global:
+      # Ref https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L15-L18
+      securityContext:
+        # Ref https://github.com/argoproj/argo-cd/issues/2347#issuecomment-671051997
+        fsGroup: 999
+      serviceAccount:
+        create: false
+    controller:
       # Instead, use the manually created serviceaccount with the IAM role
       serviceAccount:
         create: false
+    configs:
+      secret:
+        argocdServerAdminPassword: "{{ .Values.adminPassword }}"
     server:
       # See https://hub.docker.com/r/chatwork/argocd-helmfile
       image:
@@ -50,6 +69,11 @@ releases:
   chart: forks/applicationset/namespace-install
   # Same as argocd
   namespace: default
+  values:
+  - images:
+    - name: registry.cn-hangzhou.aliyuncs.com/appcenter/argocd-applicationset
+      newName: mumoshu/argocd-applicationset
+      newTag: v0.1.0
   needs:
   - argocd
 - name: apps

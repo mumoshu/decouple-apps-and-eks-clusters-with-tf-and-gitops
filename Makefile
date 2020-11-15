@@ -19,3 +19,12 @@ deps:
 	  curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash; \
 	fi
 	mkdir -p ~/.config/kustomize/plugin
+	if [ ! -e argocd ]; then \
+	  VERSION=$$(curl --silent "https://api.github.com/repos/argoproj/argo-cd/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/'); \
+	  curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/$${VERSION}/argocd-darwin-amd64; \
+	  chmod +x argocd; \
+	fi
+
+.PHONY: apply
+apply:
+	PATH=$$(pwd):$$PATH helmfile apply
