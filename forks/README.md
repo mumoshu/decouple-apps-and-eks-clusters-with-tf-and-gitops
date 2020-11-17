@@ -1,0 +1,1 @@
+- `applicationset` contains a fork of https://github.com/argoproj-labs/applicationset/tree/master/manifests with the fix for [the incorrect CRD file name](https://github.com/argoproj-labs/applicationset/blob/master/manifests/crds/kustomization.yaml#L5)
