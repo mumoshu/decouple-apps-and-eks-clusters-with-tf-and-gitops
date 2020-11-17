@@ -1,29 +1,233 @@
 values:
-- ns: '{{ .Namespace | default "default" }}'
+- ns: default
 
 ---
 
 repositories:
 - name: flagger
   url: https://flagger.app
+- name: eks
+  url: https://aws.github.io/eks-charts
+- name: jetstack
+  url: https://charts.jetstack.io
 
 releases:
+- name: cert-manager-crds
+  chart: ../../../cert-manager-crds
+- name: cert-manager
+  # Due to https://github.com/jetstack/cert-manager/issues/2752#issuecomment-608357457
+  # we can't use namespace other than cert-manager
+  #namespace: kube-system
+  namespace: cert-manager
+  chart: jetstack/cert-manager
+  needs:
+  - cert-manager-crds
+#
+# Infrastructure (AppMesh, Flagger)
+#
+# See https://docs.flagger.app/install/flagger-install-on-eks-appmesh
+- name: "appmesh-ns"
+  chart: center/incubator/raw
+  values:
+  - resources:
+    - apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: appmesh-system
+- name: metrics-server
+  chart: stable/metrics-server
+  namespace: kube-system
+  values:
+  - args:
+    - --kubelet-preferred-address-types=InternalIP
+- name: appmesh-controller
+  namespace: appmesh-system
+  forceNamespace: appmesh-system
+  needs:
+  - appmesh-ns
+  - cert-manager/cert-manager
+  disableValidation: true
+  chart: eks/appmesh-controller
+  values:
+  - enableCertManager: true
+- name: appmesh-prometheus
+  namespace: appmesh-system
+  forceNamespace: appmesh-system
+  needs:
+  - appmesh-ns
+  chart: eks/appmesh-prometheus
+- name: appmesh-grafana
+  namespace: appmesh-system
+  forceNamespace: appmesh-system
+  needs:
+  - appmesh-ns
+  chart: eks/appmesh-grafana
+- name: flagger
+  namespace: appmesh-system
+  forceNamespace: appmesh-system
+  needs:
+  - appmesh-ns
+  chart: flagger/flagger
+  values:
+  - crd:
+      create: false
+    meshProvider: "appmesh:v1beta2"
+    metricsServer: http://appmesh-prometheus:9090
+#
+# Applications (Podinfo)
+#
+- name: "{{ .Values.ns }}-ns"
+  needs:
+  - appmesh-system/appmesh-controller
+  chart: center/incubator/raw
+  values:
+  - resources:
+    - apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ .Values.ns }}"
+        labels:
+          appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+- name: mesh
+  chart: center/incubator/raw
+  needs:
+  - appmesh-system/appmesh-controller
+  disableValidation: true
+  values:
+  - resources:
+    - apiVersion: appmesh.k8s.aws/v1beta2
+      kind: Mesh
+      metadata:
+        name: global
+      spec:
+        namespaceSelector:
+          matchLabels:
+            appmesh.k8s.aws/sidecarInjectorWebhook: enabled
+- name: gateway
+  chart: ../../../charts/appmesh-gateway
+  namespace: "{{ .Values.ns }}"
+  needs:
+  # Needed to avoid:
+  #   Error: admission webhook "mvirtualgateway.appmesh.k8s.aws" denied the request: failed to find matching mesh for namespace: podinfo, expecting 1 but found 0
+  - mesh
+  - "{{ .Values.ns }}-ns"
+  - appmesh-system/appmesh-controller
+  # Ignore missing VirtualGateway CRD error on first install
+  disableValidation: true
+  values:
+  - hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      averageUtilization: 90
+    resources:
+      requests:
+        cpu: 1000m
+    service:
+      type: NodePort
+      nodePort: 30080
 - name: frontend
   chart: flagger/podinfo
   namespace: "{{ .Values.ns }}"
+  forceNamespace: "{{ .Values.ns }}"
+  needs:
+  - "{{ .Values.ns }}-ns"
+  # Required for sidecar injection
+  - appmesh-system/appmesh-controller
+  # Required for Canary CRD
+  - appmesh-system/flagger
+  disableValidation: true
   values:
   - nameOverride: frontend
-    backend: http://backend.test:9898/echo
+    backend: http://backend.{{ .Values.ns }}:9898/echo
     canary:
       enabled: true
-      istioIngress:
+      # Either loadtest or helmtest needs to be enabled,
+      # or it ends up with 
+      # Also see https://github.com/weaveworks/flagger/blob/96676648538557bd9f6cad73f31117db8880983e/charts/podinfo/values.yaml#L53-L54
+      loadtest:
         enabled: true
-        gateway: public-gateway.istio-system.svc.cluster.local
-        host: frontend.istio.example.com
+        url: http://frontend-loadtester."{{ .Values.ns }}"/
+- name: gateway-route-frontend
+  namespace: "{{ .Values.ns }}"
+  needs:
+  - "{{ .Values.ns }}-ns"
+  - "{{ .Values.ns }}/gateway"
+  - "{{ .Values.ns }}/frontend"
+  # Required to tolerate missing GatewayRoute CRD error on first install
+  disableValidation: true
+  chart: center/incubator/raw
+  values:
+  - resources:
+    - apiVersion: appmesh.k8s.aws/v1beta2
+      kind: GatewayRoute
+      metadata:
+        name: frontend
+        namespace: "{{ .Values.ns }}"
+      spec:
+        httpRoute:
+          match:
+            prefix: "/"
+          action:
+            target:
+              virtualService:
+                virtualServiceRef:
+                  name: frontend
+- name: frontend-loadtester
+  chart: flagger/loadtester
+  namespace: "{{ .Values.ns }}"
+  forceNamespace: "{{ .Values.ns }}"
+  needs:
+  - "{{ .Values.ns }}-ns"
+  # Required for sidecar injection
+  - appmesh-system/appmesh-controller
+  # Required for Canary CRD
+  - appmesh-system/flagger
+  # Required to tolerate missing Canary CRD error on first install
+  disableValidation: true
+  values:
+  - appmesh:
+      enabled: true
+      backends:
+      - frontend
+      - frontend-canary
 - name: backend
   chart: flagger/podinfo
   namespace: "{{ .Values.ns }}"
+  forceNamespace: "{{ .Values.ns }}"
+  needs:
+  - "{{ .Values.ns }}-ns"
+  # Required for sidecar injection
+  - appmesh-system/appmesh-controller
+  # Required for Canary CRD
+  - appmesh-system/flagger
+  # Required to tolerate missing Canary CRD error on first install
+  disableValidation: true
   values:
   - nameOverride: backend
     canary:
       enabled: true
+      # Either loadtest or helmtest needs to be enabled,
+      # or it ends up with 
+      # Also see https://github.com/weaveworks/flagger/blob/96676648538557bd9f6cad73f31117db8880983e/charts/podinfo/values.yaml#L53-L54
+      loadtest:
+        enabled: true
+        url: http://backend-loadtester."{{ .Values.ns }}"/
+- name: backend-loadtester
+  chart: flagger/loadtester
+  namespace: "{{ .Values.ns }}"
+  forceNamespace: "{{ .Values.ns }}"
+  needs:
+  - "{{ .Values.ns }}-ns"
+  # Required for sidecar injection
+  - appmesh-system/appmesh-controller
+  # Required for Canary CRD
+  - appmesh-system/flagger
+  # Required to tolerate missing Canary CRD error on first install
+  disableValidation: true
+  values:
+  - appmesh:
+      enabled: true
+      backends:
+      - backend
+      - backend-canary

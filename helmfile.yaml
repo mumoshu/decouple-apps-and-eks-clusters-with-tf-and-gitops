@@ -40,19 +40,28 @@ releases:
       securityContext:
         # Ref https://github.com/argoproj/argo-cd/issues/2347#issuecomment-671051997
         fsGroup: 999
-      serviceAccount:
-        create: false
+      # See https://hub.docker.com/r/chatwork/argocd-helmfile
+      image:
+        repository: mumoshu/argocd-helmfile
+        tag: latest
     controller:
       # Instead, use the manually created serviceaccount with the IAM role
       serviceAccount:
         create: false
+      # See https://hub.docker.com/r/chatwork/argocd-helmfile
+      image:
+        repository: mumoshu/argocd-helmfile
+        tag: latest
     configs:
       secret:
         argocdServerAdminPassword: "{{ .Values.adminPassword }}"
     server:
+      # Instead, use the manually created serviceaccount with the IAM role
+      serviceAccount:
+        create: false
       # See https://hub.docker.com/r/chatwork/argocd-helmfile
       image:
-        repository: chatwork/argocd-helmfile
+        repository: mumoshu/argocd-helmfile
         tag: latest
       # See https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L521-L523
       config:
@@ -61,7 +70,9 @@ releases:
           - name: helmfile
             generate:
               command: ["/bin/sh", "-c"]
-              args: ["helmfile --namespace $ARGOCD_APP_NAMESPACE template | sed -e '1,/---/d' | sed -e 's|apiregistration.k8s.io/v1beta1|apiregistration.k8s.io/v1|g'"]
+              # ARGOCD_APP_NAMESPACE is one of the standard envvars
+              # See https://argoproj.github.io/argo-cd/user-guide/build-environment/
+              args: ["helmfile --state-values-set ns=$ARGOCD_APP_NAMESPACE template | sed -e '1,/---/d' | sed -e 's|apiregistration.k8s.io/v1beta1|apiregistration.k8s.io/v1|g'"]
   needs:
   - serviceaccount
 - name: appset
@@ -103,12 +114,16 @@ releases:
             # Empty name means that application belongs to 'default' project.
             # Ref https://github.com/argoproj-labs/applicationset/blob/b72b26e8d1cdbc7993633abeb3a052a69b959b00/manifests/crds/argoproj.io_applicationsets.yaml#L216
             project: ""
+            # See https://argoproj.github.io/argo-cd/user-guide/auto_sync/
+            syncPolicy:
+              automated: {}
             source:
-              repoURL: https://github.com/mumoshu/ephemeral-eks-demo.git
+              repoURL: https://github.com/mumoshu/ephemeral-eks.git
               targetRevision: HEAD
               path: environments/{{ .Values.argoEnv }}/podinfo
               plugin:
                 name: helmfile
             destination:
-              server: '{{`{{server}}`}}'
-              namespace: podinfo
+              #server: '{{`{{server}}`}}'
+              name: "{{`{{name}}`}}"
+              namespace: default

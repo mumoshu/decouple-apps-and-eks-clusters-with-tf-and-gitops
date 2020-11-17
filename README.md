@@ -29,3 +29,29 @@
   ```
 - ArgoCD 用クラスタをつくる
 - `make deps apply`
+
+
+ターゲットクラスタのPrivate Endpoint Accessを有効化する場合、ArgoCDクラスタ（のノード）からのK8s APIアクセスもPrivateになりSecurity Groupがきくことになるため、両クラスタ側でSecurity Groupの設定が必要
+
+ArgoCDクラスタのSharedNodeSecurityGroupからのアクセスを、アプリクラスタのCluster Security Group(CFN OutputではClusterSecurityGroupId=ControlPlane.ClusterSecurityGroupId)またはAddtional Security Group(CFN OutputではSecurityGroupという名前)のIngressで許可する必要がある。
+
+前者はControl-PlaneとManaged Nodes, 後者はControl-Planeにのみ付与される。
+また、前者はControl-PlaneとManaged Nodes、その他のマネージドリソースの相互通信のために利用され、後者はeksctlでは各Unmanaged Nodeからの443へのIngressを許可し、かつUnmanaged Node側からみてControl-Planeからの443(extensions api server)と1045-65535のIngress許可に使われている。
+
+今回はArgoCDから対象クラスタのPrivate Endpoint経由でK8s APIのみアクセスできればよいので、Additional Security GroupのIngressでArgoCDクラスタのノード(に付与したSG)からの443を許可すればよい。
+
+セキュリティグループの設定が問題なければ、ArgoCD クラスタの argocd-application-controller 上で以下のようなコマンドを実行することで、疎通確認できる。
+
+```
+$ argocd-util kubeconfig https://A3688960450F35B080D39F01CE7128E7.gr7.us-east-2.eks.amazonaws.com foo
+$ KUBECONFIG=foo kubectl get no
+```
+
+=> ClusterSecurityGroupの追加Ingressってどうやって変更できるんだっけ？(eksctlは対応してないきがする?)
+
+# リンク集
+
+- https://github.com/aws/eks-charts
+- https://github.com/argoproj/argo-cd/issues/2347
+- https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd
+- https://github.com/mumoshu/ephemeral-eks

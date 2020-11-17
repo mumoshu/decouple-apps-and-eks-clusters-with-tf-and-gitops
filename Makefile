@@ -28,3 +28,21 @@ deps:
 .PHONY: apply
 apply:
 	PATH=$$(pwd):$$PATH helmfile apply
+
+.PHONY: destroy
+destroy:
+	PATH=$$(pwd):$$PATH helmfile destroy
+
+
+.PHONY: target/apply
+target/apply:
+	cd environments/production/podinfo; PATH=$$(pwd):$$PATH helmfile --state-values-set ns=podinfo $(EXTRA_FLAGS) apply
+
+.PHONY: target/destroy
+target/destroy:
+	cd environments/production/podinfo; PATH=$$(pwd):$$PATH helmfile --state-values-set ns=podinfo $(EXTRA_FLAGS) destroy
+
+.PHONY: image
+image:
+	docker build -t mumoshu/argocd-helmfile .
+	docker push mumoshu/argocd-helmfile
