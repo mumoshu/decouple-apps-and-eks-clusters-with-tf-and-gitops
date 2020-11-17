@@ -42,7 +42,7 @@ releases:
         fsGroup: 999
       # See https://hub.docker.com/r/chatwork/argocd-helmfile
       image:
-        repository: mumoshu/argocd-helmfile
+        repository: chatwork/argocd-helmfile
         tag: latest
     controller:
       # Instead, use the manually created serviceaccount with the IAM role
@@ -50,7 +50,7 @@ releases:
         create: false
       # See https://hub.docker.com/r/chatwork/argocd-helmfile
       image:
-        repository: mumoshu/argocd-helmfile
+        repository: chatwork/argocd-helmfile
         tag: latest
     configs:
       secret:
@@ -61,7 +61,7 @@ releases:
         create: false
       # See https://hub.docker.com/r/chatwork/argocd-helmfile
       image:
-        repository: mumoshu/argocd-helmfile
+        repository: chatwork/argocd-helmfile
         tag: latest
       # See https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L521-L523
       config:
