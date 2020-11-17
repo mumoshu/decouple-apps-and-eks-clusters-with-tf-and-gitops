@@ -1,5 +1,7 @@
 # App Mesh Gateway
 
+> Note: This is a fork of the original chart that adds the `service.nodePort` key
+
 App Mesh Gateway Helm chart for Kubernetes. 
 
 ## Prerequisites
