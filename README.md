@@ -2,6 +2,11 @@
 
 EKS クラスタ一式を Ephemeral だとみなすことで、どこまでクラスタ一式を Disposable, Replaceable にできるか?
 
+# 用語
+
+- ArgoCD クラスタ: ArgoCD が稼働する EKS クラスタ。複数あるターゲットクラスタへのデプロイを中央集権的に管理する。
+- ターゲットクラスタ: ArgoCD によるデプロイ先となるクラスタ。基本的にはサービス毎に１つだが、その場合でもクラスタの入れ替え作業中は一時的に２つになる。
+
 # 手順
 
 - Terraform, terraform-provider-{eksctl,helmfile}のインストール
@@ -15,6 +20,8 @@ EKS クラスタ一式を Ephemeral だとみなすことで、どこまでク�
 - `terraform apply` で ArgoCD クラスタ の入れ替え
 - `terrafomr apply` で ターゲットクラスタ の入れ替え
 
+# 以下、未整理メモ
+
 # ポイント
 
 - ArgoCD クラスタが複数のアプリケーションクラスタを管理する構成を前提とする
@@ -26,11 +33,6 @@ EKS クラスタ一式を Ephemeral だとみなすことで、どこまでク�
     - ArgoCD に管理される側のクラスタは、ArgoCD クラスタが何個いるかを気にせずに、常に単一の IAM Role に対して aws-auth でアクセス許可を行えばよい
   - ArgoCD Application は、ArgoCD に管理されるクラスタと一緒に作る。
     - ArgoCD に ApplicationSet が実装されれば解決されるかもしれない
-
-# 手順
-
-- ArgoCD クラスタ
-- アプリケーションクラスタ
 
 ## ArgoCD クラスタ
 
