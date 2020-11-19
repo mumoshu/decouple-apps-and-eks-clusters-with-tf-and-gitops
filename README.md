@@ -1,5 +1,20 @@
 # ephemeral-eks
 
+EKS クラスタ一式を Ephemeral だとみなすことで、どこまでクラスタ一式を Disposable, Replaceable にできるか?
+
+# 手順
+
+- Terraform, terraform-provider-{eksctl,helmfile}のインストール
+- `terraform apply` で [ArgoCDクラスタ一式](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/productionsetup-alb)のセットアップ
+  - 今回はずるして terraform-provider-helmfile の代わりに 単に `helmfile` を使うかもしれません
+  - Helmfile: https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml
+- `kubectl apply` で ArgoCD ApplicationSet を作成
+- `terraform apply` で [ターゲットクラスタ一式](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/vpcreuse) のセットアップ
+  - Helmfile: https://github.com/mumoshu/ephemeral-eks/blob/master/environments/production/podinfo/helmfile.yaml
+  - ターゲットクラスタへのデプロイは `terraform apply` 中で行う方法、 `helmfile apply` で行う方法、 ArgoCD に任せる方法がある。それぞれメリデメあり
+- `terraform apply` で ArgoCD クラスタ の入れ替え
+- `terrafomr apply` で ターゲットクラスタ の入れ替え
+
 # ポイント
 
 - ArgoCD クラスタが複数のアプリケーションクラスタを管理する構成を前提とする

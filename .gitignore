@@ -3,3 +3,5 @@
 #*#
 *~
 /argocd
+/kustomize
+/kustomization.yaml
