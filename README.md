@@ -55,23 +55,20 @@ SLA的にそれが許されない場合に、何かできることはないの�
 
 この方法自体は手動・自動問わず様々な方法で実現可能なのですが、今回は eksctl ベースで行う方法を前提とします。
 
-## 本題
+## 大まかな流れ
 
+クラスタは terraform がカナリアデプロイし、アプリは ArgoCD がカナリアデプロイします。
 
-## 課題
-
-## 前提条件
-
-
-
-## コンセプト
-
-EKS クラスタ一式を Ephemeral だとみなすことで、どこまでクラスタ一式を Disposable, Replaceable にできるか?
-
-# 用語
-
-- ArgoCD クラスタ: ArgoCD が稼働する EKS クラスタ。複数あるターゲットクラスタへのデプロイを中央集権的に管理する。
-- ターゲットクラスタ: ArgoCD によるデプロイ先となるクラスタ。基本的にはサービス毎に１つだが、その場合でもクラスタの入れ替え作業中は一時的に２つになる。
+- クラスタの入れ替え
+  - `terraform apply` 一発で「クラスタのカナリアデプロイ」
+    - 手前味噌ですが terraform と eksctl を悪魔合体させた [terraform-provider-eksctl](https://github.com/mumoshu/terraform-provider-eksctl) を使います。
+    - `eksctl_cluster` リソースで eksctl クラスタを作成します(つくったクラスタは普段どおり eksctl で参照・変更することもできます。エスケープハッチとして)
+    - クラスタ作成後の「共通セットアップ」は `helmfile` で行います（ArgoCD ではカナリアデプロイや容易でないものはここでクラスタと一緒にデプロイします。flagger、appmesh-controller、fluentd、また cloudwatch や datadog のエージェントなど
+    - `eksctl_courier_alb` リソースで、 Datadog や CloudWatch のメトリクスを監視しながら ALB から Target Group への重み付けを徐々に変更します
+- アプリケーションのデプロイ
+  - GitOps の Config Repo にマニフェストを git commit/push します
+  - ArgoCD が Config Repo の更新を検知し、 ArgoCD が認識している EKS クラスタにデプロイします
+  - このとき Config Repo に Flagger のマニフェスト (`Canary` リソース) があれば、クラスタ作成時にインストールしておいた Flagger がアプリケーションのカナリアデプロイを行ってくれます
 
 # 手順
 
