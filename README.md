@@ -103,6 +103,41 @@ A. してくれないので、 [ApplicationSet Controller](https://github.com/ar
 
 # Appendix
 
+## ArgoCD Cluster Secret
+
+ArgoCD は Application のデプロイ先が自クラスタ以外の場合、 Cluster Secret を必要とします。
+
+Cluster Secret はクラスタへの接続情報が書かれた K8s Secret リソースで、通常は `argocd add cluster` コマンドを実行することで作成可能です。
+
+その他に、スクリプト等で特定の形式の Secret リソースを書くことでも作ることができます。
+
+以下は ArgoCD クラスタ側の Pod IAM Role を使って ターゲットクラスタに接続する場合に利用できる Cluster Secret の例です。
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <CLUSTER NAME>
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    # Any custom annocations are accepted and available for use by ApplicationSet
+    environment: production
+type: Opaque
+stringData:
+  name: "<CLUSTER NAME>"
+  server: https://<CLUSTER ID>.gr7.<REGION>.eks.amazonaws.com
+  config: |
+    {
+      "awsAuthConfig": {
+        "clusterName": "<CLUSTER NAME>"
+      },
+      "tlsClientConfig": {
+        "insecure": false,
+        "caData": "<BASE64 CA DATA>"
+      }
+    }
+```
+
 ## ApplicationSet Controller を試す
 
 まだ公式なコンテナイメージが存在しないので、自分でビルドする必要がある。
