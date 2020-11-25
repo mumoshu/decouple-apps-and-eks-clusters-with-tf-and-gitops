@@ -1,4 +1,4 @@
-# Managing multiple EKS clusters with Terraform and GitOps
+# Keep canary-deploying applications while swapping EKS clusters with Terraform and GitOps
 
 本セッションでは、「EKS へのアプリケーションの円滑なデプロイ」と「EKS クラスタの円滑な入れ替え」をいかに両立させるか、とテーマにします。
 
