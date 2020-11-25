@@ -83,9 +83,7 @@ SLA的にそれが許されない場合に、何かできることはないの�
 - `terraform apply` で ArgoCD クラスタ の入れ替え
 - `terrafomr apply` で ターゲットクラスタ の入れ替え
 
-# 以下、未整理メモ
-
-# ポイント
+# 理解のポイント
 
 - ArgoCD クラスタが複数のアプリケーションクラスタを管理する構成を前提とする
 - ArgoCD クラスタは Terraform + Helmfileでデプロイする
@@ -97,21 +95,35 @@ SLA的にそれが許されない場合に、何かできることはないの�
   - ArgoCD Application は、ArgoCD に管理されるクラスタと一緒に作る。
     - ArgoCD に ApplicationSet が実装されれば解決されるかもしれない
 
-## ArgoCD クラスタ
+# Q&A
 
-- argocd-applicationset をビルドする
-  ```console
-  # https://github.com/argoproj-labs/applicationset#development-instructions
-  $ git clone git@github.com:argoproj-labs/applicationset.git
-  $ cd applicationset
-  $ IMAGE="mumoshu/argocd-applicationset:v0.1.0" make image deploy
-  $ docker push mumoshu/argocd-applicationset:v0.1.0
-  ```
-- ArgoCD 用クラスタをつくる
-- `make deps apply`
+Q. EKS クラスタが増えた場合に ArgoCD は自動的にそのクラスタにデプロイしてくれるのか?
+A. してくれないので、 [ApplicationSet Controller](https://github.com/argoproj-labs/applicationset#example-spec) のようなものに加えて、何らかの方法で管理対象クラスタを追加する(ArgoCD の用語では「Cluster Secret の作成」する)必要がある
+   ArgoCD 単体の機能だと、ArgoCD Application の Destination でデプロイ先を指示する仕様。Destination は静的なのでそこを動的にする必要がある。加えて、 ArgoCD にクラスタを追加するにはオフィシャルな方法だと「対象クラスタにアクセスできる環境から `argocd add cluster` コマンドを実行する」必要がある。
 
+# Appendix
 
-ターゲットクラスタのPrivate Endpoint Accessを有効化する場合、ArgoCDクラスタ（のノード）からのK8s APIアクセスもPrivateになりSecurity Groupがきくことになるため、両クラスタ側でSecurity Groupの設定が必要
+## ApplicationSet Controller を試す
+
+まだ公式なコンテナイメージが存在しないので、自分でビルドする必要がある。
+
+```console
+# https://github.com/argoproj-labs/applicationset#development-instructions
+$ git clone git@github.com:argoproj-labs/applicationset.git
+$ cd applicationset
+$ IMAGE="mumoshu/argocd-applicationset:v0.1.0" make image deploy
+$ docker push mumoshu/argocd-applicationset:v0.1.0
+```
+
+この状態で、本レポジトリの `Makefile` を使って以下のように ApplicationSet Controller 込の ArgoCD クラスタを構築できる。
+
+```
+make deps apply
+```
+
+## ArgoCD クラスタからターゲットクラスタへのアクセス
+
+ターゲットクラスタのPrivate Endpoint Accessを有効化する場合、ArgoCDクラスタ（のノード）からのK8s APIアクセスもPrivateになりSecurity Groupがきくことになるため、両クラスタ側でSecurity Groupの設定が必要。
 
 ArgoCDクラスタのSharedNodeSecurityGroupからのアクセスを、アプリクラスタのCluster Security Group(CFN OutputではClusterSecurityGroupId=ControlPlane.ClusterSecurityGroupId)またはAddtional Security Group(CFN OutputではSecurityGroupという名前)のIngressで許可する必要がある。
 
@@ -127,11 +139,10 @@ $ argocd-util kubeconfig https://A3688960450F35B080D39F01CE7128E7.gr7.us-east-2.
 $ KUBECONFIG=foo kubectl get no
 ```
 
-=> ClusterSecurityGroupの追加Ingressってどうやって変更できるんだっけ？(eksctlは対応してないきがする?)
-
 # リンク集
 
 - https://github.com/aws/eks-charts
 - https://github.com/argoproj/argo-cd/issues/2347
 - https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd
 - https://github.com/mumoshu/ephemeral-eks
+- https://github.com/argoproj-labs/applicationset
