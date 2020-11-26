@@ -72,20 +72,17 @@ SLA的にそれが許されない場合に、何かできることはないの�
 
 # 手順
 
-- [terraform providers のインストール](#terraform-providers-のインストール)
-- `terraform apply` で [ArgoCDクラスタ一式](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/productionsetup-alb)のセットアップ
-  - 今回はずるして terraform-provider-helmfile の代わりに 単に `helmfile` を使うかもしれません
-  - Helmfile: https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml
-- `kubectl apply` で ArgoCD ApplicationSet を作成
-- `terraform apply` で [ターゲットクラスタ一式](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/vpcreuse) のセットアップ
-  - Helmfile: https://github.com/mumoshu/ephemeral-eks/blob/master/environments/production/podinfo/helmfile.yaml
-  - ターゲットクラスタへのデプロイは `terraform apply` 中で行う方法、 `helmfile apply` で行う方法、 ArgoCD に任せる方法がある。それぞれメリデメあり
-- `terraform apply` で ArgoCD クラスタ の入れ替え
-- `terrafomr apply` で ターゲットクラスタ の入れ替え
+- [Terraform のインストール](#前提条件)
+- [Terraform Providers のインストール](#terraform-providers-のインストール)
+- [ArgoCD クラスタ一式の構築](#ArgoCD-クラスタ一式の構築)
+- [ターゲットクラスタ一式の構築](#ターゲットクラスタ一式の構築)
+- [アプリケーションの更新](#アプリケーションの更新)
+- [ArgoCD クラスタの入れ替え](#ArgoCD-クラスタの入れ替え)
+- [ターゲットクラスタの入れ替え](#ターゲットクラスタの入れ替え)
 
 ## 前提条件
 
-- terraform v0.13.0 以降
+- [terraform v0.13.0 以降](https://www.terraform.io/downloads.html)
 
 ## terraform providers のインストール
 
@@ -114,7 +111,7 @@ terraform {
 </details>
 
 <details>
-<summary>`terraform init`</summary>
+<summary><code>terraform init</code></summary>
 
 ```console
 Initializing the backend...
@@ -138,6 +135,116 @@ Partner and community providers are signed by their developers.
 If you'd like to know more about provider signing, you can read about it here:
 https://www.terraform.io/docs/plugins/signing.html
 ```
+</details>
+
+## ArgoCD クラスタ一式の構築
+
+以下のものを含む ArgoCD クラスタ一式を構築します。
+
+- ArgoCD 用の EKS クラスタ
+- 上記クラスタ上の ArgoCD や ApplicationSet Controller
+- ALB等
+
+[terraform-provider-eksctl の productionsetup-alb サンプル](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/productionsetup-alb)をコピーします。
+
+<details>
+</details>
+
+お好みで、 `terraform` に ArgoCD や ApplicationSet Controller のデプロイも任せたい場合は `helmfile_release_set` を main.tf に追記します。
+
+<details>
+</details>
+
+`terraform apply` を実行します。
+
+<details>
+</details>
+
+`terraform` に ArgoCD 等のデプロイをまかせなかった場合は、 `helmfile` を使って [ArgoCD + ApplicationSet 等を含む `helmfile.yaml`](https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml) を適用します。
+
+<details>
+</details>
+
+## ターゲットクラスタ一式の構築
+
+以下のものを含む ターゲットクラスタ一式を構築します。
+
+- アプリケーション 用の EKS クラスタ
+- 上記クラスタ上の Flagger、AWS AppMesh Controllerなどクラスタとライフサイクルが同じなほうが都合が良いもの
+- ALB等
+- アプリケーション (ただし、これは今回 ArgoCD にデプロイさせます)
+
+[terraform-provider-eksctl の vpcreuse サンプル](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/vpcreuse)をコピーします。
+
+<details>
+</details>
+
+`terraform apply` を実行します。
+
+<details>
+</details>
+
+ArgoCD に今回作成したターゲットクラスタを登録します。
+
+<details>
+</details>
+
+ArgoCD クラスタ上で新しいターゲットクラスタ用の Application リソースを作成します。
+
+<details>
+</details>
+
+## アプリケーションのデプロイ
+
+`values.yaml` を書き換えて、デプロイ対象のコンテナイメージタグ等を変更します。
+
+<details>
+</details>
+
+`helmfile template` でマニフェストを更新します。
+
+<details>
+</details>
+
+Config レポジトリに commit/push します。
+
+<details>
+</details>
+
+これで、稼働している全 ArgoCD クラスタが Config レポジトリの変更を自動的に検知して、アプリケーションを全クラスタにデプロイしてくれます。
+
+## ArgoCD クラスタの入れ替え
+
+`eksctl_cluster` リソースを追加します。
+
+<details>
+</details>
+
+`eksctl_courier_alb` の destination を書き換え、新しい `eksctl_cluster` （につながる Target Group) の重みが最終的に 100% となるようにします。
+
+<details>
+</details>
+
+`terraform apply` を実行します。
+
+<details>
+</details>
+
+## ターゲットクラスタの入れ替え
+
+`eksctl_cluster` リソースを追加します。
+
+<details>
+</details>
+
+`eksctl_courier_alb` の destination を書き換え、新しい `eksctl_cluster` （につながる Target Group) の重みが最終的に 100% となるようにします。
+
+<details>
+</details>
+
+`terraform apply` を実行します。
+
+<details>
 </details>
 
 # 理解のポイント
