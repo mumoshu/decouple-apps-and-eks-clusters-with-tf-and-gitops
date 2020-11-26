@@ -27,16 +27,16 @@ Kubernetes Deployment でローリングアップデートを採用していて�
 
 こうした場合に K8s 界隈だと Open Source の Blue/Green、カナリアデプロイをサポートしてくれるツールがよく使われます。
 
-- Flagger
-- Argo Rollout
-- Spinnaker
+- [Flagger](https://flagger.app/)
+- [Argo Rollout](https://argoproj.github.io/argo-rollouts/)
+- [Spinnaker](https://spinnaker.io/)
 
 これらのツールはアプリケーションの前段にトラフィックの柔軟な重み付けをサポートしているプロキシサーバがあることを前提としているものも多く、以下のようなもの（や、それが提供するFront Proxy）がよく使われます。
 
-- Envoy
-- AppMesh
-- Istio
-- Linkerd
+- [Envoy](https://www.envoyproxy.io/)
+- [AWS AppMesh](https://aws.amazon.com/jp/app-mesh/)
+- [Istio](https://istio.io/)
+- [Linkerd](https://linkerd.io/)
 
 どれを採用してもよいのですが、本セッションでは App Mesh と Flagger をベースに話を進めます。
 
@@ -347,9 +347,22 @@ Config レポジトリに commit/push します。
 
 # Q&A
 
+Q. こんな課題感をもつきっかけはなんだったか?
+
+A. アプリケーションはカナリアデプロイで気軽に更新できるようになってきたが、クラスタが塩漬けになりがち
+
 Q. EKS クラスタが増えた場合に ArgoCD は自動的にそのクラスタにデプロイしてくれるのか?
+
 A. してくれないので、 [ApplicationSet Controller](https://github.com/argoproj-labs/applicationset#example-spec) のようなものに加えて、何らかの方法で管理対象クラスタを追加する(ArgoCD の用語では「Cluster Secret の作成」する)必要がある
    ArgoCD 単体の機能だと、ArgoCD Application の Destination でデプロイ先を指示する仕様。Destination は静的なのでそこを動的にする必要がある。加えて、 ArgoCD にクラスタを追加するにはオフィシャルな方法だと「対象クラスタにアクセスできる環境から `argocd add cluster` コマンドを実行する」必要がある。
+
+# ゴール
+
+- 何がどう動いているかイメージがつかめる
+- Next Action
+  - レポジトリ紹介
+  - aws-cdk版、pulumi版、独自スクリプト・コマンド版だれか作って欲しい
+  - 社内勉強会とかでこの内容をそのまま使ってもらえる状態が理想なので、fork, pull requestしてほしい
 
 # Appendix
 
@@ -431,3 +444,6 @@ $ KUBECONFIG=foo kubectl get no
 - https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd
 - https://github.com/mumoshu/ephemeral-eks
 - https://github.com/argoproj-labs/applicationset
+- https://github.com/mumoshu/terraform-provider-eksctl/
+- https://github.com/mumoshu/terraform-provider-helmfile/
+- https://github.com/roboll/helmfile/
