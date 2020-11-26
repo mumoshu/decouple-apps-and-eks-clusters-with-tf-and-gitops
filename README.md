@@ -72,7 +72,7 @@ SLA的にそれが許されない場合に、何かできることはないの�
 
 # 手順
 
-- Terraform, terraform-provider-{eksctl,helmfile}のインストール
+- [terraform providers のインストール](#terraform-providers-のインストール)
 - `terraform apply` で [ArgoCDクラスタ一式](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/productionsetup-alb)のセットアップ
   - 今回はずるして terraform-provider-helmfile の代わりに 単に `helmfile` を使うかもしれません
   - Helmfile: https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml
@@ -82,6 +82,63 @@ SLA的にそれが許されない場合に、何かできることはないの�
   - ターゲットクラスタへのデプロイは `terraform apply` 中で行う方法、 `helmfile apply` で行う方法、 ArgoCD に任せる方法がある。それぞれメリデメあり
 - `terraform apply` で ArgoCD クラスタ の入れ替え
 - `terrafomr apply` で ターゲットクラスタ の入れ替え
+
+## 前提条件
+
+- terraform v0.13.0 以降
+
+## terraform providers のインストール
+
+Terraform v0.13.0 以降はサードパーティのプロバイダのインストールも自動化されています。
+
+`main.tf` に以下のように必要なプロバイダの名前とバージョンを指定して、 `terraform init` すればインストールされます。
+
+<details open>
+<summary>`main.tf`</summary>
+
+```hcl-terraform
+terraform {
+  required_providers {
+    eksctl = {
+      source = "mumoshu/eksctl"
+      version = "0.13.0"
+    }
+    
+    helmfile = {
+      source = "mumoshu/helmfile"
+      version = "0.10.1"
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary>`terraform init`</summary>
+
+```console
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding mumoshu/eksctl versions matching "0.13.0"...
+- Finding mumoshu/helmfile versions matching "0.10.1"...
+- Finding latest version of hashicorp/aws...
+- Finding latest version of -/aws...
+- Finding latest version of -/eksctl...
+- Installing mumoshu/eksctl v0.13.0...
+- Installed mumoshu/eksctl v0.13.0 (self-signed, key ID BE41B7B498AB7F1B)
+- Installing mumoshu/helmfile v0.10.1...
+- Installed mumoshu/helmfile v0.10.1 (self-signed, key ID BE41B7B498AB7F1B)
+- Installing hashicorp/aws v3.18.0...
+- Installed hashicorp/aws v3.18.0 (signed by HashiCorp)
+- Installing -/aws v3.18.0...
+- Installed -/aws v3.18.0 (signed by HashiCorp)
+
+Partner and community providers are signed by their developers.
+If you'd like to know more about provider signing, you can read about it here:
+https://www.terraform.io/docs/plugins/signing.html
+```
+</details>
 
 # 理解のポイント
 
