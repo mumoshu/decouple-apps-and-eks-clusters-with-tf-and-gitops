@@ -111,7 +111,7 @@ terraform {
 </details>
 
 <details>
-<summary><code>terraform init</code></summary>
+<summary><code>terraform init 実行例</code></summary>
 
 ```console
 Initializing the backend...
@@ -148,22 +148,101 @@ https://www.terraform.io/docs/plugins/signing.html
 [terraform-provider-eksctl の productionsetup-alb サンプル](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/productionsetup-alb)をコピーします。
 
 <details>
-</details>
+<summary><code>curl -L $URL > main.tf</code></summary>
 
-お好みで、 `terraform` に ArgoCD や ApplicationSet Controller のデプロイも任せたい場合は `helmfile_release_set` を main.tf に追記します。
+```
+URL=https://raw.githubusercontent.com/mumoshu/terraform-provider-eksctl/master/examples/productionsetup-alb/testdata/01-bootstrap/main.tf
+
+curl -L $URL > main.tf
+```
+</details>
 
 <details>
+<summary><code>grep -A 20 '"eksctl_cluster" "blue"' main.tf</code></summary>
+
+```hcl-terraform
+resource "eksctl_cluster" "blue" {
+  eksctl_version = "0.30.0"
+  name = "blue"
+  region = var.region
+  api_version = "eksctl.io/v1alpha5"
+  version = "1.18"
+  vpc_id = var.vpc_id
+  kubeconfig_path = "kubeconfig"
+  spec = <<EOS
+
+nodeGroups:
+  - name: ng
+    instanceType: m5.large
+    desiredCapacity: 1
+    targetGroupARNs:
+    - ${aws_lb_target_group.blue.arn}
+    securityGroups:
+      attachIDs:
+      - ${var.security_group_id}
+
+iam:
+```
 </details>
 
-`terraform apply` を実行します。
+`terraform` に ArgoCD や ApplicationSet Controller のデプロイも任せますが、それは `helmfile_release_set` によって実現されています。
 
 <details>
+<summary><code>grep -A 7 '"helmfile_release_set" "blue_myapp_v1"' main.tf</code></summary>
+
+```
+resource "helmfile_release_set" "blue_myapp_v1" {
+  content = file("./helmfile.yaml")
+  environment = "default"
+  kubeconfig = eksctl_cluster.blue.kubeconfig_path
+  depends_on = [
+    eksctl_cluster.blue,
+  ]
+}
+```
 </details>
 
-`terraform` に ArgoCD 等のデプロイをまかせなかった場合は、 `helmfile` を使って [ArgoCD + ApplicationSet 等を含む `helmfile.yaml`](https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml) を適用します。
+一連の `terraform` コマンドを実行します。
 
 <details>
+<summary><code>terraform init</code></summary>
+
+```console
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding mumoshu/eksctl versions matching "0.13.0"...
+- Finding mumoshu/helmfile versions matching "0.10.1"...
+- Finding latest version of hashicorp/aws...
+- Finding latest version of -/aws...
+- Finding latest version of -/eksctl...
+- Installing mumoshu/eksctl v0.13.0...
+- Installed mumoshu/eksctl v0.13.0 (self-signed, key ID BE41B7B498AB7F1B)
+- Installing mumoshu/helmfile v0.10.1...
+- Installed mumoshu/helmfile v0.10.1 (self-signed, key ID BE41B7B498AB7F1B)
+- Installing hashicorp/aws v3.18.0...
+- Installed hashicorp/aws v3.18.0 (signed by HashiCorp)
+- Installing -/aws v3.18.0...
+- Installed -/aws v3.18.0 (signed by HashiCorp)
+
+Partner and community providers are signed by their developers.
+If you'd like to know more about provider signing, you can read about it here:
+https://www.terraform.io/docs/plugins/signing.html
+```
 </details>
+
+<details>
+<summary><code>terraform apply</code></summary>
+
+```
+```
+</details>
+
+> NOTE: `terraform` に ArgoCD 等のデプロイをまかせなかった場合は、 `helmfile` を使って [ArgoCD + ApplicationSet 等を含む `helmfile.yaml`](https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml) を適用することもできます。
+> 同じ `helmfile.yaml` を `helmfile` からデプロイするか、 `helmfile_release_set` リソースからデプロイするかという違いでしか無いので、結果は同じです。
+>
+> <details>
+> </details>
 
 ## ターゲットクラスタ一式の構築
 
