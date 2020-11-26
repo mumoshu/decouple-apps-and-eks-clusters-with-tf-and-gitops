@@ -93,8 +93,8 @@ Terraform v0.13.0 以降はサードパーティのプロバイダのインス�
 
 `main.tf` に以下のように必要なプロバイダの名前とバージョンを指定して、 `terraform init` すればインストールされます。
 
-<details open>
-<summary>`main.tf`</summary>
+<details>
+`main.tf`
 
 ```hcl-terraform
 terraform {
