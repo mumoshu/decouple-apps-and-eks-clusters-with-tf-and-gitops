@@ -1,6 +1,7 @@
 values:
 - awsAccountID: {{ requiredEnv "AWS_ACCOUNT_ID" | quote }}
   iamRoleName: argocd
+  clusterSetIAMRoleName: clusterset-controller
   argoEnv: production
   adminPassword: {{ requiredEnv "ADMIN_PASSOWRD" | quote }}
 
@@ -31,6 +32,14 @@ releases:
             eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountID }}:role/{{ .Values.iamRoleName}}
         # Ref https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L454
         name: argocd-server
+        namespace: default
+    - apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountID }}:role/{{ .Values.clusterSetIAMRoleName}}
+        # Ref https://github.com/argoproj/argo-helm/blob/master/charts/argo-cd/values.yaml#L454
+        name: clusterset-controller
         namespace: default
 - name: argocd
   chart: argo/argo-cd
@@ -87,6 +96,35 @@ releases:
       newTag: v0.1.0
   needs:
   - argocd
+- name: clusterset-controller
+  # Same as argocd
+  namespace: default
+  chart: charts/clusterset-controller
+  values:
+  - serviceAccount:
+      create: false
+      name: clusterset-controller
+    podSecurityContext:
+      fsGroup: 1337
+- name: clustersets
+  chart: center/incubator/raw
+  disableValidation: true
+  needs:
+  - default/clusterset-controller
+  values:
+  - resources:
+    - apiVersion: clusterset.mumo.co/v1alpha1
+      kind: ClusterSet
+      metadata:
+        name: myclusterset1
+      spec:
+        selector:
+          eksTags:
+            foo: "bar"
+        template:
+          metadata:
+            labels:
+              env: "prod"
 - name: apps
   chart: center/incubator/raw
   disableValidation: true
@@ -104,6 +142,7 @@ releases:
             selector:
               matchLabels:
                 argocd.argoproj.io/secret-type: cluster
+                env: "prod"
         template:
           metadata:
             name: '{{`{{name}}`}}-podinfo'
