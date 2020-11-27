@@ -245,11 +245,26 @@ https://www.terraform.io/docs/plugins/signing.html
 ```
 </details>
 
+`kubectl` で ArgoCD クラスタ上に必要なリソースが作成されていることを確認します。
+
+<details>
+<summary><code>kubectl get deploy</code></summary>
+
+```console
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+argocd-application-controller      1/1     1            1           12d
+argocd-applicationset-controller   1/1     1            1           11d
+argocd-dex-server                  1/1     1            1           12d
+argocd-redis                       1/1     1            1           12d
+argocd-repo-server                 1/1     1            1           12d
+argocd-server                      1/1     1            1           12d
+clusterset-controller              1/1     1            1           46m
+tfpodinfo                          1/1     1            1           12d
+```
+</details>
+
 > NOTE: `terraform` に ArgoCD 等のデプロイをまかせなかった場合は、 `helmfile` を使って [ArgoCD + ApplicationSet 等を含む `helmfile.yaml`](https://github.com/mumoshu/ephemeral-eks/blob/master/helmfile.yaml) を適用することもできます。
 > 同じ `helmfile.yaml` を `helmfile` からデプロイするか、 `helmfile_release_set` リソースからデプロイするかという違いでしか無いので、結果は同じです。
->
-> <details>
-> </details>
 
 ## ターゲットクラスタ一式の構築
 
@@ -270,14 +285,52 @@ https://www.terraform.io/docs/plugins/signing.html
 <details>
 </details>
 
-ArgoCD に今回作成したターゲットクラスタを登録します。
+ArgoCD クラスタ上の ClusterSet Controller がターゲットクラスタを登録します。
 
 <details>
+<summary><code>kubectl neat get secret -o yaml $CLUSTER_NAME</code></summary>
+
+```console
+apiVersion: v1
+data:
+  config: <BASE64 ENCODED JSON CONFIG>
+  name: <BASE64 ENCODED CLUSTER NAME>
+  server: <BASE64 ENCODED HTTPS URL TO K8s API>
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    env: prod
+  name: $CLUSTER_NAME
+  namespace: default
+type: Opaque
+```
 </details>
 
-ArgoCD クラスタ上で新しいターゲットクラスタ用の Application リソースを作成します。
+ArgoCD クラスタ上の ApplicationSet Controller が新しいターゲットクラスタ用の Application リソースを作成します。
 
 <details>
+<summary><code>kubectl neat get application -o yaml ${CLUSTER_NAME}-podinfo</code></summary>
+
+```console
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    environment: prod
+  name: ${CLUSTER_NAME}-podinfo
+  namespace: default
+spec:
+  destination:
+    name: ${CLUSTER_NAME}
+    namespace: default
+  source:
+    path: environments/production/podinfo
+    plugin:
+      name: helmfile
+    repoURL: https://github.com/mumoshu/decouple-apps-and-eks-clusters-with-tf-and-gitops.git
+    targetRevision: HEAD
+```
 </details>
 
 ## アプリケーションのデプロイ
@@ -349,12 +402,17 @@ Config レポジトリに commit/push します。
 
 Q. こんな課題感をもつきっかけはなんだったか?
 
-A. アプリケーションはカナリアデプロイで気軽に更新できるようになってきたが、クラスタが塩漬けになりがち
+A. アプリケーションはカナリアデプロイで気軽に更新できるようになってきたが、クラスタが塩漬けになりがち。クラスタも気軽に更新できないか？アプリと同様にクラスタ自体もカナリアデプロイできないか？アプリとクラスタを同時並行で独立してカナリアデプロイできたら最高なのにな、と思ったことがきっかけ。
 
 Q. EKS クラスタが増えた場合に ArgoCD は自動的にそのクラスタにデプロイしてくれるのか?
 
-A. してくれないので、 [ApplicationSet Controller](https://github.com/argoproj-labs/applicationset#example-spec) のようなものに加えて、何らかの方法で管理対象クラスタを追加する(ArgoCD の用語では「Cluster Secret の作成」する)必要がある
-   ArgoCD 単体の機能だと、ArgoCD Application の Destination でデプロイ先を指示する仕様。Destination は静的なのでそこを動的にする必要がある。加えて、 ArgoCD にクラスタを追加するにはオフィシャルな方法だと「対象クラスタにアクセスできる環境から `argocd add cluster` コマンドを実行する」必要がある。
+A. 通常はしてくれないので、工夫が必要です。
+
+具体的には、何らかの方法で ArgoCD Application (デプロイ先とデプロイ内容の定義を含む) と Cluster Secret (デプロイ先クラスタの接続情報が含まれる K8s Secret) を作成する必要があります。
+
+> ArgoCD 単体の機能だと、ArgoCD Application の Destination でデプロイ先を指示する仕様。Destination は静的なのでそこを動的にする必要がある。加えて、 ArgoCD にクラスタを追加する (= Cluster Secret を作成する) にはオフィシャルな方法だと「対象クラスタにアクセスできる環境から `argocd add cluster` コマンドを実行する」ことになります。
+
+そこで今回は、「Cluster Secret が増えるたびに Application を自動作成」するために [ApplicationSet Controller](https://github.com/argoproj-labs/applicationset#example-spec) 、「EKS クラスタが増えるたびに Cluster Secret を自動作成」するために [ClusterSet Controller](https://github.com/mumoshu/argocd-clusterset) を利用しました。
 
 # ゴール
 
@@ -439,11 +497,11 @@ $ KUBECONFIG=foo kubectl get no
 
 # リンク集
 
-- https://github.com/aws/eks-charts
-- https://github.com/argoproj/argo-cd/issues/2347
-- https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd
-- https://github.com/mumoshu/ephemeral-eks
-- https://github.com/argoproj-labs/applicationset
-- https://github.com/mumoshu/terraform-provider-eksctl/
-- https://github.com/mumoshu/terraform-provider-helmfile/
-- https://github.com/roboll/helmfile/
+- ApplictionSet Controller のソース https://github.com/argoproj-labs/applicationset
+- ClusterSet Controller のソース https://github.com/mumoshu/argocd-clusterset
+- ArgoCD Helm Chart https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd
+- EKS Charts https://github.com/aws/eks-charts
+- "trouble using --aws-role-arn option when adding EKS cluster with argocd CLI" https://github.com/argoproj/argo-cd/issues/2347
+- [terraform-provider-eksctl](https://github.com/mumoshu/terraform-provider-eksctl/)
+- [terraform-provider-helmfile](https://github.com/mumoshu/terraform-provider-helmfile/)
+- [helmfile](https://github.com/roboll/helmfile/)

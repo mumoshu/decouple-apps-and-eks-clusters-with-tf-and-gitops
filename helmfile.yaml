@@ -147,7 +147,7 @@ releases:
           metadata:
             name: '{{`{{name}}`}}-podinfo'
             labels:
-              environment: '{{`{{metadata.labels.environment}}`}}'
+              environment: '{{`{{metadata.labels.env}}`}}'
           spec:
             # Project is a application project name.
             # Empty name means that application belongs to 'default' project.
@@ -157,7 +157,7 @@ releases:
             syncPolicy:
               automated: {}
             source:
-              repoURL: https://github.com/mumoshu/ephemeral-eks.git
+              repoURL: https://github.com/mumoshu/decouple-apps-and-eks-clusters-with-tf-and-gitops.git
               targetRevision: HEAD
               path: environments/{{ .Values.argoEnv }}/podinfo
               plugin:
