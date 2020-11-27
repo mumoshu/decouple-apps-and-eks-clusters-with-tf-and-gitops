@@ -40,7 +40,7 @@ target/apply:
 
 .PHONY: target/template
 target/template:
-	cd environments/production/podinfo; PATH=$$(pwd):$$PATH helmfile --state-values-set ns=podinfo $(EXTRA_FLAGS) template
+	@cd environments/production/podinfo; PATH=$$(pwd):$$PATH helmfile --state-values-set ns=podinfo $(EXTRA_FLAGS) template
 
 .PHONY: target/destroy
 target/destroy:

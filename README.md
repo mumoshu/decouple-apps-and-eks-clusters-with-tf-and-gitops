@@ -426,6 +426,61 @@ time="2020-11-27T05:15:19Z" level=info msg="Reconciliation completed" applicatio
 ```
 </details>
 
+Application(Set) リソースに定義通り、ターゲットクラスタ上にK8s リソース一式が作成されます。
+
+<details>
+<summary><code>kubectl get ns</code></summary>
+
+```
+NAME              STATUS   AGE
+appmesh-system    Active   2m
+cert-manager      Active   118s
+default           Active   9d
+kube-node-lease   Active   9d
+kube-public       Active   9d
+kube-system       Active   9d
+podinfo           Active   57s
+```
+</details>
+
+<details>
+<summary><code>kubectl get -n appmesh-system deploy</code></summary>
+
+```
+NAME                 READY   UP-TO-DATE   AVAILABLE   AGE
+appmesh-controller   1/1     1            1           63s
+appmesh-grafana      1/1     1            1           93s
+appmesh-prometheus   1/1     1            1           94s
+flagger              1/1     1            1           92s
+```
+</details>
+
+<details>
+<summary><code>kubectl get deploy -n cert-manager</code></summary>
+
+```
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+cert-manager              1/1     1            1           5m16s
+cert-manager-cainjector   1/1     1            1           5m16s
+cert-manager-webhook      1/1     1            1           5m16s
+```
+</details>
+
+<details>
+<summary><code>kubectl get -n podinfo deploy</code></summary>
+
+```
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+backend                   1/1     1            1           3m40s
+backend-loadtester        1/1     1            1           3m42s
+backend-primary           2/2     2            2           3m36s
+frontend                  1/1     1            1           3m40s
+frontend-loadtester       1/1     1            1           3m40s
+frontend-primary          2/2     2            2           3m36s
+gateway-appmesh-gateway   1/1     1            1           3m40s
+```
+</details>
+
 ## アプリケーションのデプロイ
 
 `values.yaml` を書き換えて、デプロイ対象のコンテナイメージタグ等を変更します。

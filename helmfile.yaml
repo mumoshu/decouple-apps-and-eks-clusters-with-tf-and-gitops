@@ -165,4 +165,4 @@ releases:
             destination:
               #server: '{{`{{server}}`}}'
               name: "{{`{{name}}`}}"
-              namespace: default
+              namespace: podinfo
