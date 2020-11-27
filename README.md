@@ -504,37 +504,173 @@ git push
 
 ## ArgoCD クラスタの入れ替え
 
-`eksctl_cluster` リソースを追加します。
+`eksctl_cluster` リソースを追加し、`eksctl_courier_alb` の destination を書き換え、新しい `eksctl_cluster` （につながる Target Group) の重みが最終的に 100% となるようにします。
 
 <details>
+<summary><code>main.tf 差分例</code></summary>
+
+```diff
+--- temp	2020-11-27 15:45:48.000000000 +0900
++++ temp2	2020-11-27 15:46:48.000000000 +0900
+@@ -11,16 +11,63 @@
+   destination {
+     target_group_arn = aws_lb_target_group.blue.arn
+ 
+-    weight = 100
++    weight = 0
+   }
+ 
+   destination {
+     target_group_arn = aws_lb_target_group.green.arn
+-    weight = 0
++    weight = 100
+   }
+ 
+   depends_on = [
+     eksctl_cluster.green,
+     helmfile_release_set.green_myapp_v1
+   ]
+-}
+\ No newline at end of file
++}
++
++resource "helmfile_release_set" "green_myapp_v1" {
++  content = file("./helmfile.yaml")
++  environment = "default"
++  kubeconfig = eksctl_cluster.green.kubeconfig_path
++  depends_on = [
++    eksctl_cluster.green,
++  ]
++}
++
++resource "eksctl_cluster" "green" {
++  eksctl_version = "0.30.0"
++  name = "green"
++  region = var.region
++  api_version = "eksctl.io/v1alpha5"
++  version = "1.18"
++  vpc_id = var.vpc_id
++  kubeconfig_path = "kubeconfig.green"
++  spec = <<EOS
++
++nodeGroups:
++  - name: ng
++    instanceType: m5.large
++    desiredCapacity: 1
++    targetGroupARNs:
++    - ${aws_lb_target_group.green.arn}
++    securityGroups:
++      attachIDs:
++      - ${var.security_group_id}
++
++iam:
++  withOIDC: true
++  serviceAccounts: []
++
++vpc:
++  cidr: "${var.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
++  subnets:
++    %{~ for group in keys(var.vpc_subnet_groups) }
++    ${group}:
++      %{~ for subnet in var.vpc_subnet_groups[group] }
++      ${subnet.az}:
++        id: "${subnet.id}"
++        cidr: "${subnet.cidr}"
++      %{ endfor ~}
++    %{ endfor ~}
++EOS
++}
+```
 </details>
 
-`eksctl_courier_alb` の destination を書き換え、新しい `eksctl_cluster` （につながる Target Group) の重みが最終的に 100% となるようにします。
+`terraform apply` を実行すると、 EKS クラスタの作成後、 Helmfile によるデプロイが行われ、その後徐々に ALB の向き先が新しい ArgoCD クラスタに切り替わっていきます。
 
-<details>
-</details>
-
-`terraform apply` を実行します。
-
-<details>
-</details>
+> 注: 一時的にArgoCD クラスタが2つになり、2つの ArgoCD がターゲットクラスタにデプロイを行うようになります。
+>
+> クラスタによってデプロイ内容が変わるようなケース（？）がもしあれば、古い方の ArgoCD にある Application の auto-sync を止める…などの工夫が必要になります。
 
 ## ターゲットクラスタの入れ替え
 
-`eksctl_cluster` リソースを追加します。
+`eksctl_cluster` リソースを追加し、 `eksctl_courier_alb` の destination を書き換え、新しい `eksctl_cluster` （につながる Target Group) の重みが最終的に 100% となるようにします。
 
 <details>
+<summary><code>main.tf 差分例</code></summary>
+
+```diff
+--- temp	2020-11-27 15:45:48.000000000 +0900
++++ temp2	2020-11-27 15:46:48.000000000 +0900
+@@ -11,16 +11,63 @@
+   destination {
+     target_group_arn = aws_lb_target_group.blue.arn
+ 
+-    weight = 100
++    weight = 0
+   }
+ 
+   destination {
+     target_group_arn = aws_lb_target_group.green.arn
+-    weight = 0
++    weight = 100
+   }
+ 
+   depends_on = [
+     eksctl_cluster.green,
+     helmfile_release_set.green_myapp_v1
+   ]
+-}
+\ No newline at end of file
++}
++
++resource "helmfile_release_set" "green_myapp_v1" {
++  content = file("./helmfile.yaml")
++  environment = "default"
++  kubeconfig = eksctl_cluster.green.kubeconfig_path
++  depends_on = [
++    eksctl_cluster.green,
++  ]
++}
++
++resource "eksctl_cluster" "green" {
++  eksctl_version = "0.30.0"
++  name = "green"
++  region = var.region
++  api_version = "eksctl.io/v1alpha5"
++  version = "1.18"
++  vpc_id = var.vpc_id
++  kubeconfig_path = "kubeconfig.green"
++  spec = <<EOS
++
++nodeGroups:
++  - name: ng
++    instanceType: m5.large
++    desiredCapacity: 1
++    targetGroupARNs:
++    - ${aws_lb_target_group.green.arn}
++    securityGroups:
++      attachIDs:
++      - ${var.security_group_id}
++
++iam:
++  withOIDC: true
++  serviceAccounts: []
++
++vpc:
++  cidr: "${var.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
++  subnets:
++    %{~ for group in keys(var.vpc_subnet_groups) }
++    ${group}:
++      %{~ for subnet in var.vpc_subnet_groups[group] }
++      ${subnet.az}:
++        id: "${subnet.id}"
++        cidr: "${subnet.cidr}"
++      %{ endfor ~}
++    %{ endfor ~}
++EOS
++}
+```
 </details>
 
-`eksctl_courier_alb` の destination を書き換え、新しい `eksctl_cluster` （につながる Target Group) の重みが最終的に 100% となるようにします。
-
-<details>
-</details>
-
-`terraform apply` を実行します。
-
-<details>
-</details>
+`terraform apply` を実行すると、EKS クラスタの作成と Helmfile によるデプロイが完了後、徐々に ALB の向き先が変わっていきます。
 
 # 理解のポイント
 
