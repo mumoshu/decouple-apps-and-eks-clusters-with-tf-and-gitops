@@ -124,7 +124,7 @@ releases:
         template:
           metadata:
             labels:
-              env: "prod"
+              env: "production"
 - name: apps
   chart: center/incubator/raw
   disableValidation: true
