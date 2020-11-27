@@ -288,7 +288,7 @@ tfpodinfo                          1/1     1            1           12d
 ArgoCD クラスタ上の ClusterSet Controller がターゲットクラスタを登録します。
 
 <details>
-<summary><code>kubectl logs deploy/controller-manager -c manager -f<code></summary>
+<summary><code>kubectl logs deploy/controller-manager -c manager -f</code></summary>
 
 ```console
 ...
