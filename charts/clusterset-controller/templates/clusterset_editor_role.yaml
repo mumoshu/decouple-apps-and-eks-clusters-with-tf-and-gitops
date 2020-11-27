@@ -1,0 +1,26 @@
+# permissions to do edit clustersets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "clusterset-controller.runnerEditorRoleName" . }}
+rules:
+- apiGroups:
+  - clusterset.mumo.co
+  resources:
+  - clustersets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - clusterset.mumo.co
+  resources:
+  - clustersets/status
+  verbs:
+  - get
+  - patch
+  - update
