@@ -142,7 +142,7 @@ releases:
             selector:
               matchLabels:
                 argocd.argoproj.io/secret-type: cluster
-                env: "prod"
+                env: "production"
         template:
           metadata:
             name: '{{`{{name}}`}}-podinfo'
