@@ -288,6 +288,36 @@ tfpodinfo                          1/1     1            1           12d
 ArgoCD クラスタ上の ClusterSet Controller がターゲットクラスタを登録します。
 
 <details>
+<summary><code>kubectl logs deploy/controller-manager -c manager -f<code></summary>
+
+```console
+...
+2020/11/27 05:15:06 Using in-cluster Kubernetes API client
+2020/11/27 05:15:06 Computing desired cluster secrets from EKS clusters...
+2020/11/27 05:15:06 Calling EKS ListClusters...
+2020/11/27 05:15:06 Found 3 clusters.
+2020/11/27 05:15:06 Checking cluster blue...
+2020/11/27 05:15:06 Cluster blue with tags map[] did not match selector map[foo:bar]
+2020/11/27 05:15:06 Checking cluster green...
+2020/11/27 05:15:06 Cluster green with tags map[] did not match selector map[foo:bar]
+2020/11/27 05:15:06 Checking cluster ${CLUSTER_NAME}...
+Cluster secert "${CLUSTER_NAME}" created successfully
+2020/11/27 05:15:06 Using in-cluster Kubernetes API client
+2020/11/27 05:15:06 Computing desired cluster secrets from EKS clusters...
+2020/11/27 05:15:06 Calling EKS ListClusters...
+2020/11/27 05:15:07 Found 3 clusters.
+2020/11/27 05:15:07 Checking cluster blue...
+2020/11/27 05:15:07 Cluster blue with tags map[] did not match selector map[foo:bar]
+2020/11/27 05:15:07 Checking cluster green...
+2020/11/27 05:15:07 Cluster green with tags map[] did not match selector map[foo:bar]
+2020/11/27 05:15:07 Checking cluster ${CLUSTER_NAME}...
+2020-11-27T05:15:07.406Z	DEBUG	controller	Successfully Reconciled	{"reconcilerGroup": "clusterset.mumo.co", "reconcilerKind": "ClusterSet", "controller": "clusterset", "name": "myclusterset1", "namespace": "default"}
+2020-11-27T05:15:07.406Z	DEBUG	controller-runtime.manager.events	Normal	{"object": {"kind":"ClusterSet","namespace":"default","name":"myclusterset1","uid":"dd9eef73-f781-4d22-a562-6d4363ebf798","apiVersion":"clusterset.mumo.co/v1alpha1","resourceVersion":"3161147"}, "reason": "SyncFinished", "message": "Sync finished on 'myclusterset1'"}
+...
+```
+</details>
+
+<details>
 <summary><code>kubectl neat get secret -o yaml $CLUSTER_NAME</code></summary>
 
 ```console
@@ -333,22 +363,82 @@ spec:
 ```
 </details>
 
+ArgoCD クラスタ上の Application Controller がターゲットクラスタにアプリケーションをデプロイします。
+
+<details>
+<summary><code>kubectl logs deploy/argocd-application-controller -f</code></summary>
+
+```
+time="2020-11-27T05:15:13Z" level=info msg="Normalized app spec: {\"spec\":{\"project\":\"default\"}}" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:13Z" level=info msg="Initiated automated sync to '1d6e2f4077e5a714bee4918312437d5b2ed153dc'" application=${CLUSTER_NAME}-podinfo dest-namespace=default dest-server="https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com" reason=OperationStarted type=Normal
+time="2020-11-27T05:15:13Z" level=info msg="updated '${CLUSTER_NAME}-podinfo' operation (phase: Running)"
+time="2020-11-27T05:15:13Z" level=info msg="Initialized new operation: {&SyncOperation{Revision:1d6e2f4077e5a714bee4918312437d5b2ed153dc,Prune:false,DryRun:false,SyncStrategy:nil,Resources:[]SyncOperationResource{},Source:nil,Manifests:[],SyncOptions:[],} { true} [] {5 nil}}" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:13Z" level=info msg="Ignore status for CustomResourceDefinitions"
+time="2020-11-27T05:15:13Z" level=info msg="Comparing app state (cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default)" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:13Z" level=info msg="Initiated automated sync to '1d6e2f4077e5a714bee4918312437d5b2ed153dc'" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:13Z" level=info msg="Updated sync status:  -> OutOfSync" application=${CLUSTER_NAME}-podinfo dest-namespace=default dest-server= reason=ResourceUpdated type=Normal
+time="2020-11-27T05:15:13Z" level=info msg="Updated health status:  -> Missing" application=${CLUSTER_NAME}-podinfo dest-namespace=default dest-server= reason=ResourceUpdated type=Normal
+time="2020-11-27T05:15:13Z" level=info msg="getRepoObjs stats" application=${CLUSTER_NAME}-podinfo build_options_ms=0 helm_ms=0 plugins_ms=0 repo_ms=0 time_ms=33 unmarshal_ms=33 version_ms=0
+time="2020-11-27T05:15:13Z" level=info msg="Update successful" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:13Z" level=info msg="Reconciliation completed" application=${CLUSTER_NAME}-podinfo dedup_ms=0 dest-name=${CLUSTER_NAME} dest-namespace=default dest-server= diff_ms=125 fields.level=2 git_ms=5982 health_ms=0 live_ms=0 settings_ms=0 sync_ms=0 time_ms=6251
+time="2020-11-27T05:15:13Z" level=info msg="Ignore status for CustomResourceDefinitions"
+time="2020-11-27T05:15:13Z" level=info msg=syncing application=${CLUSTER_NAME}-podinfo skipHooks=false started=false syncId=00001-IktCv
+time="2020-11-27T05:15:13Z" level=info msg=tasks application=${CLUSTER_NAME}-podinfo syncId=00001-IktCv tasks="[Sync/0 resource apiextensions.k8s.io/CustomResourceDefinition:default/certificaterequests.cert-manager.io nil->obj (,,), Sync/0 resource apiextensions.k8s.io/CustomResourceDefinition:default/certificates.cert-manager.io nil->obj (,,), Sync/0 resource apiextensions.k8s.io/CustomResourceDefinition:default/challenges.acme.cert-manager.io nil->obj (,,), Sync/0 resource apiextensions.k8s.io/CustomResourceDefinition:default/clusterissuers.cert-manager.io nil->obj (,,), Sync/0 resource apiextensions.k8s.io/CustomResourceDefinition:default/issuers.cert-manager.io nil->obj (,,), Sync/0 resource apiextensions.k8s.io/CustomResourceDefinition:default/orders.acme.cert-manager.io nil->obj (,,)]"
+time="2020-11-27T05:15:13Z" level=info msg="Applying resource CustomResourceDefinition/certificaterequests.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:13Z" level=info msg="Applying resource CustomResourceDefinition/certificates.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:13Z" level=info msg="Applying resource CustomResourceDefinition/clusterissuers.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:13Z" level=info msg="Applying resource CustomResourceDefinition/issuers.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:13Z" level=info msg="Applying resource CustomResourceDefinition/challenges.acme.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:13Z" level=info msg="Applying resource CustomResourceDefinition/orders.acme.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="Updating operation state. phase: Running -> Running, message: '' -> 'one or more tasks are running'" application=${CLUSTER_NAME}-podinfo syncId=00001-IktCv
+time="2020-11-27T05:15:14Z" level=info msg="Applying resource CustomResourceDefinition/clusterissuers.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="Applying resource CustomResourceDefinition/certificaterequests.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="Applying resource CustomResourceDefinition/issuers.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="Applying resource CustomResourceDefinition/certificates.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="Applying resource CustomResourceDefinition/challenges.acme.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="Applying resource CustomResourceDefinition/orders.acme.cert-manager.io in cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default"
+time="2020-11-27T05:15:14Z" level=info msg="adding resource result, status: 'Synced', phase: 'Running', message: 'customresourcedefinition.apiextensions.k8s.io/certificates.cert-manager.io created'" application=${CLUSTER_NAME}-podinfo kind=CustomResourceDefinition name=certificates.cert-manager.io namespace=default phase=Sync syncId=00001-IktCv
+time="2020-11-27T05:15:14Z" level=warning msg="Partial success when performing preferred resource discovery: unable to retrieve the complete list of server APIs: acme.cert-manager.io/v1: the server could not find the requested resource, acme.cert-manager.io/v1alpha2: the server could not find the requested resource, acme.cert-manager.io/v1alpha3: the server could not find the requested resource, acme.cert-manager.io/v1beta1: the server could not find the requested resource, cert-manager.io/v1: the server could not find the requested resource, cert-manager.io/v1alpha2: the server could not find the requested resource, cert-manager.io/v1alpha3: the server could not find the requested resource, cert-manager.io/v1beta1: the server could not find the requested resource"
+time="2020-11-27T05:15:15Z" level=info msg="adding resource result, status: 'Synced', phase: 'Running', message: 'customresourcedefinition.apiextensions.k8s.io/orders.acme.cert-manager.io created'" application=${CLUSTER_NAME}-podinfo kind=CustomResourceDefinition name=orders.acme.cert-manager.io namespace=default phase=Sync syncId=00001-IktCv
+time="2020-11-27T05:15:15Z" level=info msg="adding resource result, status: 'Synced', phase: 'Running', message: 'customresourcedefinition.apiextensions.k8s.io/certificaterequests.cert-manager.io created'" application=${CLUSTER_NAME}-podinfo kind=CustomResourceDefinition name=certificaterequests.cert-manager.io namespace=default phase=Sync syncId=00001-IktCv
+time="2020-11-27T05:15:16Z" level=info msg="adding resource result, status: 'Synced', phase: 'Running', message: 'customresourcedefinition.apiextensions.k8s.io/issuers.cert-manager.io created'" application=${CLUSTER_NAME}-podinfo kind=CustomResourceDefinition name=issuers.cert-manager.io namespace=default phase=Sync syncId=00001-IktCv
+time="2020-11-27T05:15:17Z" level=info msg="adding resource result, status: 'Synced', phase: 'Running', message: 'customresourcedefinition.apiextensions.k8s.io/challenges.acme.cert-manager.io created'" application=${CLUSTER_NAME}-podinfo kind=CustomResourceDefinition name=challenges.acme.cert-manager.io namespace=default phase=Sync syncId=00001-IktCv
+time="2020-11-27T05:15:18Z" level=info msg="adding resource result, status: 'Synced', phase: 'Running', message: 'customresourcedefinition.apiextensions.k8s.io/clusterissuers.cert-manager.io created'" application=${CLUSTER_NAME}-podinfo kind=CustomResourceDefinition name=clusterissuers.cert-manager.io namespace=default phase=Sync syncId=00001-IktCv
+time="2020-11-27T05:15:18Z" level=info msg="Updating operation state. phase: Running -> Succeeded, message: 'one or more tasks are running' -> 'successfully synced (all tasks run)'" application=${CLUSTER_NAME}-podinfo syncId=00001-IktCv
+time="2020-11-27T05:15:18Z" level=info msg="sync/terminate complete" application=${CLUSTER_NAME}-podinfo duration=4.742508828s syncId=00001-IktCv
+time="2020-11-27T05:15:18Z" level=info msg="updated '${CLUSTER_NAME}-podinfo' operation (phase: Succeeded)"
+time="2020-11-27T05:15:18Z" level=info msg="Sync operation to 1d6e2f4077e5a714bee4918312437d5b2ed153dc succeeded" application=${CLUSTER_NAME}-podinfo dest-namespace=default dest-server="https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com" reason=OperationCompleted type=Normal
+time="2020-11-27T05:15:18Z" level=info msg="Refreshing app status (controller refresh requested), level (2)" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:18Z" level=info msg="Ignore status for CustomResourceDefinitions"
+time="2020-11-27T05:15:18Z" level=info msg="Comparing app state (cluster: https://${CLUSTER_ID}.sk1.us-east-2.eks.amazonaws.com, namespace: default)" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:18Z" level=info msg="getRepoObjs stats" application=${CLUSTER_NAME}-podinfo build_options_ms=0 helm_ms=0 plugins_ms=0 repo_ms=0 time_ms=110 unmarshal_ms=110 version_ms=0
+time="2020-11-27T05:15:18Z" level=info msg="Normalized app spec: {\"spec\":{\"project\":\"default\"}}" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:19Z" level=info msg="Skipping auto-sync: application status is Synced" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:19Z" level=info msg="Updated sync status: OutOfSync -> Synced" application=${CLUSTER_NAME}-podinfo dest-namespace=default dest-server= reason=ResourceUpdated type=Normal
+time="2020-11-27T05:15:19Z" level=info msg="Updated health status: Missing -> Healthy" application=${CLUSTER_NAME}-podinfo dest-namespace=default dest-server= reason=ResourceUpdated type=Normal
+time="2020-11-27T05:15:19Z" level=info msg="Update successful" application=${CLUSTER_NAME}-podinfo
+time="2020-11-27T05:15:19Z" level=info msg="Reconciliation completed" application=${CLUSTER_NAME}-podinfo dedup_ms=0 dest-name=${CLUSTER_NAME} dest-namespace=default dest-server= diff_ms=593 fields.level=2 git_ms=111 health_ms=0 live_ms=47 settings_ms=0 sync_ms=0 time_ms=1004
+```
+</details>
+
 ## アプリケーションのデプロイ
 
 `values.yaml` を書き換えて、デプロイ対象のコンテナイメージタグ等を変更します。
 
-<details>
-</details>
-
-`helmfile template` でマニフェストを更新します。
-
-<details>
-</details>
+```
+$EDITOR environments/production/podinfo/frontend.values.yaml
+```
 
 Config レポジトリに commit/push します。
 
-<details>
-</details>
+> よくある GitOps の実装だと、 Config レポジトリの内容は K8s マニフェストや kustomization だと思います。
+> 今回は helmfile の設定を Config レポジトリの内容にしているので、作業としてはこれだけでOKです。
+
+```
+git add environments/production/podinfo/*.values.yaml
+git commit -m 'Update values'
+git push
+```
 
 これで、稼働している全 ArgoCD クラスタが Config レポジトリの変更を自動的に検知して、アプリケーションを全クラスタにデプロイしてくれます。
 

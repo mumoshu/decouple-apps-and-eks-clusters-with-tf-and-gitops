@@ -131,6 +131,7 @@ releases:
   namespace: "{{ .Values.ns }}"
   forceNamespace: "{{ .Values.ns }}"
   needs:
+  - mesh
   - "{{ .Values.ns }}-ns"
   # Required for sidecar injection
   - appmesh-system/appmesh-controller
@@ -148,9 +149,11 @@ releases:
       loadtest:
         enabled: true
         url: http://frontend-loadtester."{{ .Values.ns }}"/
+  - frontend.values.yaml
 - name: gateway-route-frontend
   namespace: "{{ .Values.ns }}"
   needs:
+  - mesh
   - "{{ .Values.ns }}-ns"
   - "{{ .Values.ns }}/gateway"
   - "{{ .Values.ns }}/frontend"
@@ -178,6 +181,7 @@ releases:
   namespace: "{{ .Values.ns }}"
   forceNamespace: "{{ .Values.ns }}"
   needs:
+  - mesh
   - "{{ .Values.ns }}-ns"
   # Required for sidecar injection
   - appmesh-system/appmesh-controller
@@ -196,6 +200,7 @@ releases:
   namespace: "{{ .Values.ns }}"
   forceNamespace: "{{ .Values.ns }}"
   needs:
+  - mesh
   - "{{ .Values.ns }}-ns"
   # Required for sidecar injection
   - appmesh-system/appmesh-controller
@@ -213,6 +218,7 @@ releases:
       loadtest:
         enabled: true
         url: http://backend-loadtester."{{ .Values.ns }}"/
+  - backend.values.yaml
 - name: backend-loadtester
   chart: flagger/loadtester
   namespace: "{{ .Values.ns }}"
