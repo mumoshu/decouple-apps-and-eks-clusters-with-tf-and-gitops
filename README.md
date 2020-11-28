@@ -282,8 +282,57 @@ tfpodinfo                          1/1     1            1           12d
 
 [terraform-provider-eksctl の vpcreuse サンプル](https://github.com/mumoshu/terraform-provider-eksctl/tree/master/examples/vpcreuse)をコピーします。
 
+次に、Helmfile でデプロイするものと、 ArgoCD にデプロイさせたいものを選びます。
+
+例えば、 `cert-manager-crds` と `cert-manager` のみ `terraform apply` 中に Helmfile でまとめてデプロイし、
+残りを ArgoCD でデプロイさせたい場合、 `main.tf` 側は以下のようになります。
+
 <details>
+<summary><code>main.tf</code></summary>
+
+```
+resource "helmfile_release_set" "blue_myapp_v1" {
+  content = file("./helmfile.yaml")
+  environment = "default"
+  kubeconfig = eksctl_cluster.blue.kubeconfig_path
+  values = {
+    namespace = "podinfo"
+  }
+  // helmfile -l name=cert-manager -l name=cert-manager-crds template 相当
+  selectors = [
+      {
+          name = "cert-manager-crds"
+      },
+      {
+          name = "cert-manager"
+      },
+  ]
+  depends_on = [
+    eksctl_cluster.blue,
+  ]
+}
+```
+
+また、 ArgoCD にデプロイさせるものを絞り込むため、ArgoCD クラスタ用 [helmfile.yaml](helmfile.yaml) 内 Config Management Plugin の `helmfile` コマンドの引数に `-l name!=cert-manager,name!=cert-manager-crds` を追加します。
+
+<details>
+<summary><code>helmfile.yaml - configManagementPlugins</code></summary>
+
+```
+configManagementPlugins: |
+- name: helmfile
+  init:
+    command: ["/bin/sh", "-c"]
+    # ARGOCD_APP_NAMESPACE is one of the standard envvars
+    # See https://argoproj.github.io/argo-cd/user-guide/build-environment/
+    args: ["helmfile --state-values-set ns=$ARGOCD_APP_NAMESPACE -f helmfile.yaml -l name!=cert-manager,name!=cert-manager-crds template --include-crds | sed -e '1,/---/d' | sed -e '/WARNING: This chart is deprecated/d' | sed -e 's|apiregistration.k8s.io/v1beta1|apiregistration.k8s.io/v1|g' > manifests.yaml"]
+  generate:
+    command: ["/bin/sh", "-c"]
+    args: ["cat manifests.yaml"]
+```
 </details>
+
+アプリも含めすべてを `terraform apply` でデプロイしてしまいたい場合は、 `helmfile_release_set` の `selectors` と、 Config Management Plugin の `-l` フラグを省略すればOKです。
 
 `terraform apply` を実行します。
 
