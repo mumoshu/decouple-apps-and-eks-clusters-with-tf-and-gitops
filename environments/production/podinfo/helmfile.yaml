@@ -37,7 +37,7 @@ releases:
       metadata:
         name: appmesh-system
 - name: metrics-server
-  chart: stable/metrics-server
+  chart: center/stable/metrics-server
   namespace: kube-system
   values:
   - args:
