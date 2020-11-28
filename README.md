@@ -781,6 +781,102 @@ $ argocd-util kubeconfig https://A3688960450F35B080D39F01CE7128E7.gr7.us-east-2.
 $ KUBECONFIG=foo kubectl get no
 ```
 
+## ArgoCD でデプロイ失敗したとき
+
+`kubectl describe application` してみると、 Status に直接原因が書かれている。
+
+<details>
+
+```
+Status:
+  Conditions:
+    Last Transition Time:  2020-11-28T04:36:37Z
+    Message:               Failed sync attempt to 8253234632f29dfc2d07c390e357238ef83f0d3f: one or more objects failed to apply (dry run) (retried 5 times).
+    Type:                  SyncError
+  Health:
+    Status:  Missing
+  Operation State:
+    Finished At:  2020-11-28T04:36:36Z
+    Message:      one or more objects failed to apply (dry run) (retried 5 times).
+    Operation:
+      Initiated By:
+        Automated:  true
+      Retry:
+        Limit:  5
+      Sync:
+        Prune:     true
+        Revision:  8253234632f29dfc2d07c390e357238ef83f0d3f
+    Phase:         Failed
+    Retry Count:   5
+    Sync Result:
+      Resources:
+      ...
+```
+</details>
+
+`Sync Result > Resources` 以下にリソース別の情報 - エラーならその内容 - が書かれている。
+
+例えば、以下の例は AppMesh の Admission Webhook Server が稼働する前に Apply しようとしたことによる一時的なエラー（リトライでそのうち成功するはず）
+
+<details>
+
+```
+Group:       appmesh.k8s.aws
+Hook Phase:  Failed
+Kind:        Mesh
+Message:     Internal error occurred: failed calling webhook "mmesh.appmesh.k8s.aws": Post https://appmesh-controller-webhook-service.appmesh-system.svc:443/mutate-appmesh-k8s-aws-v1beta2-mesh?timeout=30s: no endpoints available for service "appmesh-controller-webhook-service"
+Name:        global
+Namespace:   podinfo
+Status:      SyncFailed
+Sync Phase:  Sync
+Version:     v1beta2
+```
+</details>
+
+以下は Config Management Plugin で生成したマニフェストに余分な文字列が含まれていて、 YAML or K8s Resource として Invalid な場合のエラー（こちらはユーザエラーなのでマニフェストを修正するまで成功しない）
+
+<details>
+
+```
+Group:       apiextensions.k8s.io
+Hook Phase:  Failed
+Kind:        CustomResourceDefinition
+Message:     error validating data: ValidationError(CustomResourceDefinition): unknown field "WARNING" in io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceDefinition
+Name:        orders.acme.cert-manager.io
+Namespace:   podinfo
+Status:      SyncFailed
+Sync Phase:  Sync
+Version:     v1
+```
+</details>
+
+Config Management Plugin を利用している場合、 環境差異によって想定通りのマニフェストが生成されてないことによるエラーはよくある。
+
+その場合、 argocd-repo-server 内に Config Repository の clone が存在するので、そこで Config Management Plugin と同等のコマンドを実行してみるとデバッグできる。
+
+<details>
+
+```
+$ kubectl exec -it argocd-repo-server-85bf8d77fb-4sbrq -- bash
+
+$ cd /tmp/https\:__githubcom_mumoshu_decouple-apps-and-eks-clusters-with-tf-and-gitops/
+
+$ ls -l
+-rw-r--r-- 1 argocd argocd  1667 Nov 27 06:28 Makefile
+-rw-r--r-- 1 argocd argocd 43594 Nov 27 06:52 README.md
+drwxr-xr-x 2 argocd argocd    22 Nov 27 05:15 cert-manager-crds
+drwxr-xr-x 4 argocd argocd    58 Nov 27 05:15 charts
+drwxr-xr-x 3 argocd argocd    24 Nov 27 05:15 environments
+drwxr-xr-x 3 argocd argocd    45 Nov 27 05:15 forks
+-rw-r--r-- 1 argocd argocd  5900 Nov 28 04:44 helmfile.yaml
+-rw-r--r-- 1 argocd argocd   330 Nov 27 05:15 tester.yaml
+
+$ cd environments/production/podinfo/
+
+$ helmfile template --include-crds > manifests.yaml
+```
+</details>
+
 # リンク集
 
 - ApplictionSet Controller のソース https://github.com/argoproj-labs/applicationset
