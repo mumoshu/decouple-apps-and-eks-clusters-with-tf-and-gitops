@@ -333,7 +333,7 @@ configManagementPlugins: |
 ```
 </details>
 
-アプリも含めすべてを `terraform apply` でデプロイしてしまいたい場合は、 `helmfile_release_set` の `selectors` と、 Config Management Plugin の `-l` フラグを省略すればOKです。
+> アプリも含めすべてを `terraform apply` でデプロイしてしまいたい場合は、 `helmfile_release_set` の `selectors` と、 Config Management Plugin の `-l` フラグを省略すればOKです。
 
 `terraform apply` を実行します。
 
