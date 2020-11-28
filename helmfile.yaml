@@ -81,7 +81,7 @@ releases:
               command: ["/bin/sh", "-c"]
               # ARGOCD_APP_NAMESPACE is one of the standard envvars
               # See https://argoproj.github.io/argo-cd/user-guide/build-environment/
-              args: ["helmfile --state-values-set ns=$ARGOCD_APP_NAMESPACE template | sed -e '1,/---/d' | sed -e 's|apiregistration.k8s.io/v1beta1|apiregistration.k8s.io/v1|g'"]
+              args: ["helmfile --state-values-set ns=$ARGOCD_APP_NAMESPACE template --include-crds | sed -e '1,/---/d' | sed -e 's|apiregistration.k8s.io/v1beta1|apiregistration.k8s.io/v1|g'"]
   needs:
   - serviceaccount
 - name: appset
@@ -155,7 +155,9 @@ releases:
             project: ""
             # See https://argoproj.github.io/argo-cd/user-guide/auto_sync/
             syncPolicy:
-              automated: {}
+              automated:
+                prune: true
+                selfHeal: true
             source:
               repoURL: https://github.com/mumoshu/decouple-apps-and-eks-clusters-with-tf-and-gitops.git
               targetRevision: HEAD
