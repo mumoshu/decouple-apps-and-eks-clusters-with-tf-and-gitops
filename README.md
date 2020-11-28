@@ -312,6 +312,7 @@ resource "helmfile_release_set" "blue_myapp_v1" {
   ]
 }
 ```
+</details>
 
 また、 ArgoCD にデプロイさせるものを絞り込むため、ArgoCD クラスタ用 [helmfile.yaml](helmfile.yaml) 内 Config Management Plugin の `helmfile` コマンドの引数に `-l name!=cert-manager,name!=cert-manager-crds` を追加します。
 
