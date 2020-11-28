@@ -115,7 +115,7 @@ terraform {
     
     helmfile = {
       source = "mumoshu/helmfile"
-      version = "0.10.1"
+      version = "0.11.0"
     }
   }
 }
@@ -300,12 +300,8 @@ resource "helmfile_release_set" "blue_myapp_v1" {
   }
   // helmfile -l name=cert-manager -l name=cert-manager-crds template 相当
   selectors = [
-      {
-          name = "cert-manager-crds"
-      },
-      {
-          name = "cert-manager"
-      },
+    "name=cert-manager-crds",
+    "name=cert-manager",
   ]
   depends_on = [
     eksctl_cluster.blue,
